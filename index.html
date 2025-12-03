@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Maths Quest : Immersion Totale</title>
+<style>
+    body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; user-select: none; }
+    /* Le Canvas doit être cliquable */
+    #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: auto; }
+    
+    /* L'interface ne doit PAS bloquer les clics, sauf les boutons */
+    #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+    .interactive { pointer-events: auto; } /* Réactive le clic pour les boutons */
+
+    .hud-top { position: absolute; top: 0; left: 0; width: 100%; padding: 15px; display: flex; justify-content: space-between; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); color: white; text-shadow: 0 2px 2px #000; box-sizing: border-box; }
+    .stat-val { font-size: 1.4rem; font-weight: 800; display: block; } .stat-label { font-size: 0.8rem; opacity: 0.8; text-transform: uppercase; }
+    
+    #tooltip { position: absolute; background: rgba(0,0,0,0.9); color: white; padding: 5px 10px; border-radius: 5px; font-weight: bold; pointer-events: none; opacity: 0; transform: translate(-50%, -150%); border: 1px solid #555; transition: opacity 0.2s; z-index: 20; }
+    
+    #game-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2d3436; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.2, 1, 0.3, 1); pointer-events: auto; }
+    #game-screen.active { transform: translateY(0); }
+    .game-bar { position: absolute; top: 0; left: 0; height: 6px; width: 100%; background: rgba(0,0,0,0.3); }
+    .game-progress { height: 100%; background: #00b894; width: 100%; transition: width 1s linear; }
+    .q-display { font-size: 3.5rem; font-weight: 900; color: white; margin: 20px 0; text-align: center; text-shadow: 0 5px 10px rgba(0,0,0,0.5); }
+    .inp-display { font-size: 2.5rem; min-width: 150px; padding: 10px; margin-bottom: 30px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 15px; color: white; text-align: center; font-weight: bold; height: 60px; line-height: 60px; }
+    
+    .numpad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 95%; max-width: 400px; }
+    .key { padding: 15px; font-size: 1.4rem; border-radius: 12px; border: none; background: rgba(255,255,255,0.9); color: #333; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2); pointer-events: auto; }
+    .key:active { transform: translateY(4px); box-shadow: none; }
+    .k-op { background: rgba(255,255,255,0.7); } .k-ok { background: #00b894; color: white; } .k-del { background: #d63031; color: white; }
+    .k-close { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.2); color: white; border:none; font-size: 1.5rem; cursor: pointer; pointer-events: auto; }
+    .shake { animation: shake 0.3s ease-in-out; } @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-10px);} 75%{transform:translateX(10px);} }
+</style>
+<script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } } </script>
+</head>
+
+
+
+<body>
+<div id="canvas-container"></div>
+<div id="tooltip"></div>
+<div id="ui-overlay">
+    <div class="hud-top">
+        <div style="text-align:center"><span class="stat-val">⭐ <span id="ui-stars">0</span></span><span class="stat-label">Total</span></div>
+        <div style="text-align:center"><span class="stat-val" id="ui-biome">BANLIEUE</span><span class="stat-label">Biome</span></div>
+        <div style="text-align:center"><span class="stat-val">Niv <span id="ui-lvl">1</span></span><span class="stat-label">Prochain</span></div>
+    </div>
+</div>
+<div id="game-screen">
+    <div class="game-bar"><div class="game-progress" id="g-timer"></div></div>
+    <button class="k-close" onclick="window.game.close()">×</button>
+    <div style="color:rgba(255,255,255,0.7); font-weight:bold; margin-bottom:10px;">Niveau <span id="g-lvl-num">1</span></div>
+    <div class="q-display" id="g-quest">?</div>
+    <div class="inp-display" id="g-inp"></div>
+    <div class="numpad">
+        <button class="key" onclick="window.game.tap('7')">7</button><button class="key" onclick="window.game.tap('8')">8</button><button class="key" onclick="window.game.tap('9')">9</button><button class="key k-op" onclick="window.game.tap('/')">÷</button>
+        <button class="key" onclick="window.game.tap('4')">4</button><button class="key" onclick="window.game.tap('5')">5</button><button class="key" onclick="window.game.tap('6')">6</button><button class="key k-op" onclick="window.game.tap('*')">×</button>
+        <button class="key" onclick="window.game.tap('1')">1</button><button class="key" onclick="window.game.tap('2')">2</button><button class="key" onclick="window.game.tap('3')">3</button><button class="key k-op" onclick="window.game.tap('-')">-</button>
+        <button class="key" onclick="window.game.tap('0')">0</button><button class="key k-del" onclick="window.game.tap('DEL')">⌫</button><button class="key k-ok" onclick="window.game.validate()">OK</button><button class="key k-op" onclick="window.game.tap('.')">,</button>
+    </div>
+</div>
+
+
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    window.THREE = THREE;
+    window.scene = null; window.camera = null; window.renderer = null; window.controls = null;
+    window.levelMeshes = []; window.pathPoints = []; window.textureLoader = new THREE.TextureLoader();
+
+    // Fonction pour changer l'image de fond quand on change de biome
+    window.loadBiomeTexture = function(imageFile) {
+        window.textureLoader.load(imageFile, (tex) => {
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(5, 5);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            window.scene.background = tex;
+            if(window.groundMesh) window.groundMesh.material.map = tex;
+            if(window.groundMesh) window.groundMesh.material.needsUpdate = true;
+        }, undefined, (err) => {
+            console.log("Pas d'image trouvée pour " + imageFile + ", utilisation couleur unie.");
+            window.scene.background = new THREE.Color(0x87CEEB);
+            if(window.groundMesh) window.groundMesh.material.map = null;
+        });
+    }
+
+    (function initEngine() {
+        const container = document.getElementById('canvas-container');
+        window.scene = new THREE.Scene();
+        window.scene.background = new THREE.Color(0x87CEEB);
+        window.scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
+
+        window.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        window.camera.position.set(0, 8, 25); 
+
+        window.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        window.renderer.setSize(window.innerWidth, window.innerHeight);
+        window.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        window.renderer.shadowMap.enabled = true;
+        container.appendChild(window.renderer.domElement);
+
+        const ambient = new THREE.AmbientLight(0xffffff, 0.8); window.scene.add(ambient);
+        const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(50, 100, 50);
+        sun.castShadow = true; 
+        window.scene.add(sun);
+
+        window.controls = new OrbitControls(window.camera, window.renderer.domElement);
+        window.controls.enableRotate = false; window.controls.enableZoom = true;
+        window.controls.minDistance = 10; window.controls.maxDistance = 60;
+        window.controls.maxPolarAngle = Math.PI / 2 - 0.1;
+    })();
+</script>
+
+
+
+<script>
+    window.TOTAL_LEVELS = 500;
+    window.LEVELS_PER_BIOME = 20;
+
+    // Structure : [Nom, Sol(Hex), Chemin(Hex), Fog(Hex), GradientCSS, NomFichierImage]
+    const B_DATA = [
+        // --- BLOC 1 : CIVILISATION ---
+        ["Banlieue", 0x4cd137, 0x2c3e50, 0x87CEEB, "linear-gradient(135deg, #4cd137, #87CEEB)", "biome1.jpg"],
+        ["Centre-Ville", 0x95a5a6, 0x2c3e50, 0xb0bec5, "linear-gradient(135deg, #7f8c8d, #bdc3c7)", "biome2.jpg"],
+        ["Autoroute", 0x2d3436, 0xffa502, 0x1e272e, "linear-gradient(135deg, #000000, #2d3436)", "biome3.jpg"],
+        ["Industrie", 0x636e72, 0xd63031, 0xb2bec3, "linear-gradient(135deg, #636e72, #d63031)", "biome4.jpg"],
+        ["Port", 0x3498db, 0x2c3e50, 0xecf0f1, "linear-gradient(135deg, #2980b9, #ecf0f1)", "biome5.jpg"],
+        
+        // --- BLOC 2 : NATURE ---
+        ["Plaines", 0x2ecc71, 0xd35400, 0x87CEEB, "linear-gradient(135deg, #2ecc71, #87CEEB)", "biome6.jpg"],
+        ["Forêt", 0x006266, 0x5d4037, 0x1abc9c, "linear-gradient(135deg, #006266, #1abc9c)", "biome7.jpg"],
+        ["Jungle", 0x009432, 0x1B1464, 0x006266, "linear-gradient(135deg, #009432, #1289A7)", "biome8.jpg"],
+        ["Savane", 0xf1c40f, 0xe67e22, 0xf39c12, "linear-gradient(135deg, #f1c40f, #e67e22)", "biome9.jpg"],
+        ["Canyon", 0xd35400, 0x2c3e50, 0xe17055, "linear-gradient(135deg, #d35400, #b33939)", "biome10.jpg"],
+        
+        // --- BLOC 3 : EXTRÊME ---
+        ["Désert", 0xf39c12, 0xd35400, 0xf1c40f, "linear-gradient(135deg, #f39c12, #ffda79)", "biome11.jpg"],
+        ["Marais", 0x2f3640, 0x4cd137, 0x353b48, "linear-gradient(135deg, #1e272e, #44bd32)", "biome12.jpg"],
+        ["Banquise", 0xffffff, 0x3498db, 0xdff9fb, "linear-gradient(135deg, #c7ecee, #dff9fb)", "biome13.jpg"],
+        ["Cristal", 0x22a6b3, 0xbe2edd, 0x7ed6df, "linear-gradient(135deg, #22a6b3, #e056fd)", "biome14.jpg"],
+        ["Volcan", 0x2d3436, 0xc0392b, 0x636e72, "linear-gradient(135deg, #c0392b, #2d3436)", "biome15.jpg"],
+        
+        // --- BLOC 4 : CÉLESTE ---
+        ["Sommets", 0xdfe6e9, 0x636e72, 0xb2bec3, "linear-gradient(135deg, #b2bec3, #dfe6e9)", "biome16.jpg"],
+        ["Nuages", 0x74b9ff, 0xffffff, 0x81ecec, "linear-gradient(135deg, #74b9ff, #81ecec)", "biome17.jpg"],
+        ["Cyberpunk", 0x130f40, 0xe056fd, 0x30336b, "linear-gradient(135deg, #130f40, #e056fd)", "biome18.jpg"],
+        ["Temple", 0xf1c40f, 0xffffff, 0xfffa65, "linear-gradient(135deg, #f1c40f, #fff200)", "biome19.jpg"],
+        ["Stratosphère", 0x0984e3, 0x000000, 0x2d3436, "linear-gradient(135deg, #0984e3, #000000)", "biome20.jpg"],
+        
+        // --- BLOC 5 : ESPACE ---
+        ["Lune", 0xb2bec3, 0x2d3436, 0x000000, "linear-gradient(135deg, #2d3436, #000000)", "biome21.jpg"],
+        ["Saturne", 0xe17055, 0x0984e3, 0x000000, "linear-gradient(135deg, #e17055, #2d3436)", "biome22.jpg"],
+        ["Nébuleuse", 0x6c5ce7, 0xe056fd, 0x2c2c54, "linear-gradient(135deg, #6c5ce7, #2c2c54)", "biome23.jpg"],
+        ["Dimension", 0x00b894, 0xff7675, 0x000000, "linear-gradient(135deg, #00b894, #ff7675)", "biome24.jpg"],
+        ["Trou Noir", 0x000000, 0xffffff, 0x000000, "linear-gradient(135deg, #000000, #434343)", "biome25.jpg"]
+    ];
+
+    window.getBiome = (level) => {
+        let idx = Math.floor((level - 1) / window.LEVELS_PER_BIOME);
+        if (idx >= B_DATA.length) idx = B_DATA.length - 1;
+        return { 
+            id: idx, 
+            name: B_DATA[idx][0], 
+            ground: B_DATA[idx][1], 
+            path: B_DATA[idx][2], 
+            fog: B_DATA[idx][3], 
+            css: B_DATA[idx][4],
+            image: B_DATA[idx][5]
+        };
+    };
+</script>
+
+
+
+<script type="module">
+import * as THREE from 'three';
+if(window.scene) generateWorld();
+
+function generateWorld() {
+    const stepZ = 12;
+    // 1. Grande Courbe (Moins sinueuse pour mieux voir la "route")
+    for(let i=0; i <= window.TOTAL_LEVELS + 10; i++) {
+        let x = Math.sin(i * 0.1) * 15; // Virages plus doux
+        let y = (i > 300) ? (i - 300) * 0.8 : 0;
+        window.pathPoints.push(new THREE.Vector3(x, y, -i * stepZ));
+    }
+
+    // 2. Sols des Biomes
+    for(let b=0; b < B_DATA.length; b++) {
+        let start = b * window.LEVELS_PER_BIOME;
+        let end = (b + 1) * window.LEVELS_PER_BIOME;
+        let centerZ = -((start + end) / 2) * stepZ;
+        let bInfo = window.getBiome(start + 1);
+
+        const geo = new THREE.PlaneGeometry(400, window.LEVELS_PER_BIOME * stepZ + 50);
+        
+        // On utilise l'image si dispo, sinon couleur
+        const mat = new THREE.MeshStandardMaterial({ 
+            color: window.globalTexture ? 0xffffff : bInfo.ground, 
+            map: window.globalTexture || null,
+            roughness: 1 
+        });
+
+        const gr = new THREE.Mesh(geo, mat);
+        gr.rotation.x = -Math.PI / 2; gr.position.set(0, -2, centerZ);
+        if(start > 300) gr.position.y = (start - 300) * 0.8 - 10;
+        gr.receiveShadow = true; 
+        window.scene.add(gr);
+        
+        // Sauvegarde ref pour update texture si chargement lent
+        if(b===0) window.groundMesh = gr; 
+
+        // Chemin
+        let pStart = Math.max(0, start - 1), pEnd = Math.min(window.pathPoints.length, end + 2);
+        let seg = window.pathPoints.slice(pStart, pEnd);
+        if(seg.length > 1) {
+            const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(seg), seg.length * 6, 3, 8, false);
+            const road = new THREE.Mesh(tube, new THREE.MeshStandardMaterial({ color: bInfo.path, roughness: 0.8 }));
+            road.scale.y = 0.05; road.position.y = 0.1; road.receiveShadow = true; window.scene.add(road);
+        }
+    }
+    // 3. Pierres (Niveaux)
+    const cyl = new THREE.CylinderGeometry(1.8, 2.2, 0.6, 32); const box = new THREE.BoxGeometry(4, 0.8, 4);
+    for(let i=1; i <= window.TOTAL_LEVELS; i++) {
+        let isL = i % 5 === 0; let p = window.pathPoints[i];
+        let m = new THREE.Mesh(isL ? box : cyl, new THREE.MeshStandardMaterial({ color: 0x888888 }));
+        m.position.set(p.x, p.y + 0.5, p.z); m.castShadow = true; m.userData = { id: i };
+        window.scene.add(m); window.levelMeshes[i] = m;
+    }
+}
+</script>
+
+
+
+<script type="module">
+import * as THREE from 'three';
+
+window.updateWorldVisuals = function() {
+    if(!window.levelMeshes) return;
+    let b = window.getBiome(window.gameState.unlocked);
+    window.scene.fog.color.setHex(b.fog); 
+    // On garde l'image en fond si elle est là, sinon couleur fog
+    if(!window.globalTexture) window.scene.background.setHex(b.fog);
+    document.getElementById('ui-biome').innerText = b.name.toUpperCase();
+    // Ajoutez ceci dans updateWorldVisuals :
+    if(window.loadBiomeTexture) window.loadBiomeTexture(b.image);
+
+    window.levelMeshes.forEach(mesh => {
+        if(!mesh) return;
+        let id = mesh.userData.id; let unlocked = id <= window.gameState.unlocked;
+        let stars = window.gameState.stars[id] || 0; let isLogic = id % 5 === 0;
+        const cvs = document.createElement('canvas'); cvs.width = 128; cvs.height = 128;
+        const ctx = cvs.getContext('2d');
+        ctx.fillStyle = unlocked ? (isLogic ? '#a29bfe' : '#ffffff') : '#636e72'; ctx.fillRect(0,0,128,128);
+        if(stars === 3) { ctx.lineWidth = 10; ctx.strokeStyle = "#f1c40f"; ctx.strokeRect(0,0,128,128); }
+        ctx.fillStyle = unlocked ? '#2d3436' : '#b2bec3';
+        ctx.font = 'bold 50px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(unlocked ? id : '🔒', 64, 64);
+        if(stars > 0) { ctx.font = '20px Arial'; ctx.fillText("⭐".repeat(stars), 64, 100); }
+        mesh.material.map = new THREE.CanvasTexture(cvs); mesh.material.needsUpdate = true;
+    });
+}
+let particles = [];
+window.spawnConfetti = function(pos) {
+    for(let i=0; i<40; i++) {
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ color: Math.random()*0xffffff, side: THREE.DoubleSide }));
+        p.position.set(pos.x, pos.y + 2, pos.z);
+        p.userData = { vel: new THREE.Vector3((Math.random()-0.5), Math.random()+0.5, (Math.random()-0.5)), rot: new THREE.Vector3(Math.random()*0.2, Math.random()*0.2, 0) };
+        window.scene.add(p); particles.push(p);
+    }
+}
+function animate() {
+    requestAnimationFrame(animate);
+    if(window.controls) window.controls.update();
+    if(window.renderer && window.scene && window.camera) window.renderer.render(window.scene, window.camera);
+    for(let i=particles.length-1; i>=0; i--) {
+        let p = particles[i]; p.position.add(p.userData.vel); p.rotation.x += p.userData.rot.x; p.userData.vel.y -= 0.05;
+        if(p.userData.vel.y < -2) { window.scene.remove(p); particles.splice(i,1); }
+    }
+}
+animate();
+</script>
+
+
+
+<script>
+    // --- ETAT JEU ---
+    window.gameState = JSON.parse(localStorage.getItem('mq_500')) || { unlocked: 1, stars: {} };
+
+    // --- MATHS ---
+    function getProblem(lvl) {
+        const r = (min,max) => Math.floor(Math.random()*(max-min+1))+min; let q="", a=0;
+        if(lvl % 5 === 0) {
+            let base = r(2, lvl/5 + 5);
+            if(lvl < 100) { let step = r(2,5); q=`${base}, ${base+step}, ${base+step*2}, ...`; a=base+step*3; }
+            else if (lvl < 300) { q=`${base}, ${base*2}, ${base*4}, ...`; a=base*8; }
+            else { let n=r(2,10); q=`2->4, 3->9, ${n}->?`; a=n*n; }
+        } else {
+            if(lvl <= 100) {
+                if(lvl <= 20) { let n1=r(2,15), n2=r(2,15); q=`${n1}+${n2}`; a=n1+n2; }
+                else if(lvl <= 60) { let n1=r(10,50), n2=r(2,9); q=`${n1}-${n2}`; a=n1-n2; }
+                else { let n1=r(2,9), n2=r(2,9); q=`${n1}×${n2}`; a=n1*n2; }
+            } else if(lvl <= 200) {
+                if(lvl <= 150) { let ans=r(2,9), n=r(2,9); q=`${ans*n}÷${n}`; a=ans; }
+                else { let n=r(2,12); q=`${n}²`; a=n*n; }
+            } else if(lvl <= 300) {
+                let n1=r(2,10), n2=r(2,5), n3=r(2,5); q = `${n1} + ${n2} × ${n3}`; a = n1 + n2*n3;
+            } else if(lvl <= 400) {
+                let n = r(11, 19); q = `11 × ${n}`; a = 11 * n;
+            } else {
+                if(Math.random() > 0.5) { let y=r(1,5), x=y+r(1,5); q=`${x}² - ${y}²`; a=(x-y)*(x+y); }
+                else { let n=r(11,25); q=`√${n*n}`; a=n; }
+            }
+        }
+        return {q,a};
+    }
+
+    // --- GAMEPLAY UI ---
+    let currentSession = null;
+    window.game = {
+        open: function(lvl) {
+            let screen = document.getElementById('game-screen');
+            screen.classList.add('active'); // Ouvre l'écran
+            document.getElementById('g-lvl-num').innerText = lvl;
+            
+            // Applique une couleur de fond thématique
+            let biome = window.getBiome(lvl);
+            screen.style.background = biome.css;
+
+            currentSession = { lvl: lvl, timer: lvl % 5 === 0 ? 60 : 45, maxTime: lvl % 5 === 0 ? 60 : 45, score: 0, problem: null, interval: setInterval(this.tick, 1000) };
+            this.nextQ();
+        },
+        close: function() {
+            document.getElementById('game-screen').classList.remove('active'); clearInterval(currentSession?.interval);
+            window.moveCamera(window.gameState.unlocked);
+        },
+        tick: function() {
+            currentSession.timer--; let pct = (currentSession.timer / currentSession.maxTime) * 100;
+            document.getElementById('g-timer').style.width = pct + "%";
+            if(currentSession.timer <= 0) { alert("Temps écoulé !"); window.game.close(); }
+        },
+        nextQ: function() {
+            let pb = getProblem(currentSession.lvl); currentSession.problem = pb;
+            document.getElementById('g-quest').innerText = pb.q; document.getElementById('g-inp').innerText = "";
+        },
+        tap: function(k) { let el = document.getElementById('g-inp'); if(k==='DEL') el.innerText = ""; else if(el.innerText.length < 8) el.innerText += k; },
+        validate: function() {
+            let val = parseInt(document.getElementById('g-inp').innerText);
+            if(val === currentSession.problem.a) {
+                let stars = 1; if(currentSession.timer > currentSession.maxTime*0.5) stars=3; else if(currentSession.timer > currentSession.maxTime*0.2) stars=2;
+                if(stars > (window.gameState.stars[currentSession.lvl] || 0)) window.gameState.stars[currentSession.lvl] = stars;
+                if(currentSession.lvl === window.gameState.unlocked) window.gameState.unlocked++;
+                localStorage.setItem('mq_500', JSON.stringify(window.gameState));
+                
+                // Mise à jour visuelle
+                document.getElementById('ui-stars').innerText = Object.values(window.gameState.stars).reduce((a,b)=>a+b,0);
+                document.getElementById('ui-lvl').innerText = window.gameState.unlocked;
+                if(window.updateWorldVisuals) window.updateWorldVisuals();
+                if(window.levelMeshes[currentSession.lvl]) window.spawnConfetti(window.levelMeshes[currentSession.lvl].position);
+                
+                this.close();
+            } else {
+                currentSession.timer -= 5; let el = document.getElementById('g-inp'); el.classList.add('shake'); setTimeout(()=>el.classList.remove('shake'), 300); el.innerText = "";
+            }
+        }
+    };
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    const raycaster = new THREE.Raycaster(); 
+    const mouse = new THREE.Vector2();
+
+    // Déplacement Caméra Fluide
+    window.moveCamera = function(lvlIdx) {
+        if(!window.levelMeshes[lvlIdx]) return;
+        let target = window.levelMeshes[lvlIdx].position;
+        let offset = new THREE.Vector3(0, 8, 20); // Vue arrière
+        
+        let frames = 0, startPos = window.camera.position.clone(), endPos = target.clone().add(offset), startLook = window.controls.target.clone();
+        function loop() {
+            frames++; let t = frames / 60; if(t > 1) t = 1; 
+            let ease = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            window.camera.position.lerpVectors(startPos, endPos, ease); 
+            window.controls.target.lerpVectors(startLook, target, ease);
+            if(frames < 60) requestAnimationFrame(loop);
+        } loop();
+    }
+
+    // Gestion du Clic (Raycasting)
+    window.addEventListener('click', (e) => {
+        // Ignore les clics si on est dans l'interface de jeu ou sur un bouton
+        if(e.target.closest('button') || e.target.closest('.key') || e.target.id === 'game-screen') return;
+
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1; 
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        
+        raycaster.setFromCamera(mouse, window.camera);
+        const intersects = raycaster.intersectObjects(window.levelMeshes);
+        
+        if(intersects.length > 0) { 
+            let id = intersects[0].object.userData.id; 
+            if(id <= window.gameState.unlocked) {
+                window.game.open(id); 
+            }
+        }
+    });
+
+    // Curseur Main
+    window.addEventListener('mousemove', (e) => {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1; 
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, window.camera);
+        const intersects = raycaster.intersectObjects(window.levelMeshes);
+        const tooltip = document.getElementById('tooltip');
+        
+        if(intersects.length > 0) {
+            let id = intersects[0].object.userData.id; 
+            document.body.style.cursor = 'pointer';
+            tooltip.style.opacity = 1; tooltip.style.left = e.clientX + 'px'; tooltip.style.top = e.clientY + 'px';
+            tooltip.innerText = (id > window.gameState.unlocked) ? "Verrouillé" : "Niveau " + id;
+        } else { 
+            document.body.style.cursor = 'default'; tooltip.style.opacity = 0; 
+        }
+    });
+
+    // Boucle principale
+    function animate() { 
+        requestAnimationFrame(animate); 
+        if(window.controls) window.controls.update(); 
+        if(window.renderer && window.scene && window.camera) window.renderer.render(window.scene, window.camera); 
+    }
+    animate();
+
+    // Init position caméra au chargement
+    setTimeout(() => { 
+        document.getElementById('ui-lvl').innerText = window.gameState.unlocked; 
+        document.getElementById('ui-stars').innerText = Object.values(window.gameState.stars).reduce((a,b)=>a+b,0); 
+        if(window.updateWorldVisuals) window.updateWorldVisuals(); 
+        if(window.moveCamera) window.moveCamera(window.gameState.unlocked); 
+    }, 1000);
+</script>
+</body>
+</html>
