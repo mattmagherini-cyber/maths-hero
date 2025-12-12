@@ -162,8 +162,40 @@
     .btn-modal { background: linear-gradient(135deg, #00b894 0%, #00cec9 100%); color: white; border: none; padding: 15px 30px; font-family: 'Russo One', sans-serif; font-size: 1.2rem; border-radius: 50px; cursor: pointer; width: 100%; box-shadow: 0 10px 20px rgba(0, 184, 148, 0.4); transition: transform 0.2s; }
     .btn-modal:hover { transform: scale(1.05); }
     .btn-modal.fail { background: linear-gradient(135deg, #d63031 0%, #ff7675 100%); box-shadow: 0 10px 20px rgba(214, 48, 49, 0.4); }
-    #game-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 8, 25, 0.9); backdrop-filter: blur(5px); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 80px; box-sizing: border-box; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.4, 0.0, 0.2, 1); }
-    #game-screen.active { transform: translateY(0); }
+    /* --- ECRAN DE JEU (CORRECTIF SCROLL & HAUTEUR) --- */
+    #game-screen { 
+        position: fixed; 
+        top: 0; left: 0; 
+        width: 100%; 
+        height: 100dvh; /* Force la hauteur réelle sans barre de nav */
+        
+        background: rgba(10, 8, 25, 0.95); 
+        backdrop-filter: blur(10px); 
+        z-index: 25000; /* Au-dessus du HUD */
+        
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: flex-start; /* Aligne en haut */
+        padding-top: 90px; /* Espace pour la barre du haut */
+        box-sizing: border-box; 
+        
+        transform: translateY(100%); 
+        visibility: hidden; /* CRUCIAL : Rend l'élément inexistant quand fermé */
+        
+        /* Transition : on attend que l'anim finisse pour cacher la visibilité */
+        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), visibility 0s linear 0.3s;
+        
+        /* Empêche le zoom et le scroll élastique sur le jeu */
+        touch-action: none; 
+        overscroll-behavior: none;
+    }
+
+    #game-screen.active { 
+        transform: translateY(0); 
+        visibility: visible; 
+        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), visibility 0s linear 0s;
+    }
     #game-screen.error-flash { animation: flashRed 0.4s ease-out; } @keyframes flashRed { 0%, 100% { background: rgba(10, 8, 25, 0.85); } 50% { background: rgba(100, 30, 30, 0.85); } }
     .q-display { font-family: 'Russo One', sans-serif; font-size: 3.5rem; margin: 15px 0; text-align: center; color: #fff; text-shadow: 0 2px 10px black; } .inp-display { font-family: 'Russo One', sans-serif; font-size: 3rem; min-width: 240px; padding: 0 25px; margin-bottom: 25px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.1); border-radius: 16px; text-align: center; color: #00d2d3; height: 80px; line-height: 80px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
     .numpad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 95%; max-width: 380px; } .key { padding: 18px 0; font-size: 1.5rem; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; font-family: 'Montserrat', sans-serif; background: #383a45; color: #fff; box-shadow: 0 4px 0 #222; transition: all 0.1s; } .key:hover { background: #4a4d5a; } .key:active { transform: translateY(4px); box-shadow: 0 0 0 #222; } .k-ok { background: #00b894; color: white; grid-column: span 4; margin-top: 10px; box-shadow: 0 4px 0 #00796b; font-family: 'Russo One', sans-serif; } .k-del { background: #d63031; } .k-op { background: #0984e3; } .k-frac { background: #e17055; } /* Croix descendue à 100px pour passer sous la barre du haut (90px) */
@@ -189,68 +221,64 @@
     .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; } @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-6px, 0, 0); } 40%, 60% { transform: translate3d(6px, 0, 0); } }
 /* --- OPTIMISATION MOBILE (RESPONSIVE) --- */
     /* --- OPTIMISATION MOBILE FINALE (RESPONSIVE) --- */
+    /* --- OPTIMISATION MOBILE FINALE --- */
     @media (max-width: 480px) {
-        
-        /* 1. VICTOIRE : Titre adaptatif (ne sera jamais coupé) */
-        .vic-title { 
-            font-size: 11vw; /* S'adapte à la largeur de l'écran */
-            line-height: 1.1; 
+        /* Empêche le scroll horizontal et élastique sur tout le site */
+        html, body { 
+            overflow-x: hidden; 
+            overscroll-behavior: none; 
+            height: 100dvh; 
         }
-        .vic-icon { font-size: 4rem; margin-bottom: 10px; }
-        .vic-text { font-size: 1rem; padding: 0 20px; }
 
-        /* 2. DÉZOOM DU MENU (Cartes plus petites) */
-        .world-card-global {
-            width: 75% !important; /* Réduit la largeur pour l'effet "loin" */
-            max-width: 300px;
-            margin-bottom: 50px; /* Réduit l'espace vertical */
+        /* 1. DÉZOOM DU MENU */
+        #grid-container {
+            zoom: 0.8; /* Réduit à 80% */
+            width: 100%;
+            padding-bottom: 150px;
         }
-        .world-title-global { font-size: 1.3rem; }
-        .world-status-global { font-size: 1rem; }
 
-        /* 3. BOUTON INFINI PLUS PETIT */
-        .energy-gate { 
-            width: 75%; 
-            padding: 20px; 
-            margin-bottom: 40px; 
+        /* 2. ADAPTATION JEU (ANTI-DÉBORDEMENT) */
+        #game-screen { 
+            padding-top: 80px; 
+            justify-content: space-evenly; /* Répartit l'espace verticalement */
+            padding-bottom: 20px;
         }
-        .energy-title { font-size: 1rem; }
-        .energy-val { font-size: 1.4rem; }
 
-        /* 4. INTERFACE JEU (HUD & BOUTONS) */
-        .hud-top { height: 70px; padding: 0 5px; }
+        /* Réduction des textes pour éviter que ça sorte */
+        .q-display { font-size: 2.5rem; margin: 0; text-shadow: 0 2px 5px black; }
+        .inp-display { height: 55px; line-height: 55px; font-size: 2rem; min-width: 160px; margin-bottom: 10px; }
+        #g-instr { min-height: 20px; margin: 5px 0; font-size: 0.85rem; }
+
+        /* Clavier compact */
+        .numpad { gap: 8px; width: 94%; max-height: 45vh; }
+        .key { padding: 10px 0; font-size: 1.4rem; border-radius: 12px; }
+
+        /* Barre du haut compacte */
+        .hud-top { height: 70px; padding: 0 5px; z-index: 26000; /* Au-dessus du jeu */ }
         .stat-val { font-size: 0.9rem; }
         .stat-label { font-size: 0.6rem; }
         .settings-btn { font-size: 1.4rem; }
-        .heart-icons { font-size: 0.9rem; letter-spacing: 0; }
-        #ui-life-timer { font-size: 0.6rem; }
-        
-        /* Jeu remonté */
-        #game-screen { padding-top: 80px; } 
-        
-        /* Éléments de jeu compacts */
-        .q-display { font-size: 2.2rem; margin: 5px 0; }
-        .inp-display { height: 50px; line-height: 50px; font-size: 2rem; min-width: 180px; margin-bottom: 10px; }
-        
-        .numpad { gap: 6px; width: 95%; }
-        .key { padding: 10px 0; font-size: 1.2rem; border-radius: 8px; }
-        
-        /* Croix de fermeture */
-        .k-close { top: 80px; right: 10px; width: 40px; height: 40px; font-size: 1.5rem; }
+        .heart-icons { font-size: 1rem; letter-spacing: 1px; }
 
-        /* Niveaux (Bulles) */
-        .lvl-btn { width: 65px; height: 65px; font-size: 1.2rem; margin: 15px 0; }
-        .lvl-btn:nth-child(4n+2) { transform: translateX(50px); }
-        .lvl-btn:nth-child(4n+4) { transform: translateX(-50px); }
+        /* Croix de fermeture bien placée */
+        .k-close { top: 80px; right: 10px; width: 40px; height: 40px; font-size: 1.5rem; }
+            width: 50px; height: 50px; 
+            background: rgba(255, 50, 50, 0.3); border: 1px solid rgba(255,255,255,0.2);
+            z-index: 27000;
+        }
+        
+        /* Victoire */
+        .vic-title { font-size: 11vw; }
+        .vic-icon { font-size: 4rem; }
     }
     
-    /* Sécurité iPhone SE et petits écrans */
-    @media (max-height: 650px) {
-        .q-display { margin: 2px 0; font-size: 1.8rem; }
-        .key { padding: 8px 0; }
-        .inp-display { margin-bottom: 5px; height: 45px; line-height: 45px; }
-        .bars-container { margin-bottom: 5px; }
-        #g-instr { min-height: 18px; font-size: 0.8rem; margin: 5px 0; }
+    /* Sécurité petits iPhone (SE) */
+    @media (max-height: 670px) {
+        .q-display { font-size: 2rem; }
+        .key { padding: 6px 0; font-size: 1.2rem; }
+        .inp-display { height: 45px; line-height: 45px; margin-bottom: 5px; }
+        .bars-container { margin-bottom: 5px; transform: scale(0.9); }
+        .world-card-global { margin-bottom: 30px; }
     }
         
         /* Barre du haut (HUD) plus fine */
