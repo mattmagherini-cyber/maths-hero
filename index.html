@@ -189,10 +189,42 @@
     .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; } @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-6px, 0, 0); } 40%, 60% { transform: translate3d(6px, 0, 0); } }
 /* --- OPTIMISATION MOBILE (RESPONSIVE) --- */
     @media (max-width: 480px) {
-        /* Textes de l'accueil plus petits */
+        /* 1. DÉZOOM GLOBAL DU MENU (LISTE DES MONDES) */
+        #grid-container {
+            zoom: 0.85; /* Réduit tout le menu à 85% de sa taille */
+            width: 100%;
+        }
+
+        /* 2. CORRECTION DU TITRE VICTOIRE COUPÉ */
+        .vic-title { font-size: 2rem; line-height: 1.2; } /* Taille réduite pour tenir */
+        .vic-icon { font-size: 4rem; margin-bottom: 10px; }
+        .vic-text { font-size: 1rem; margin-bottom: 30px; }
+
+        /* Ajustements interface standards */
         .world-title-global { font-size: 1.4rem; }
         .energy-title { font-size: 1.2rem; }
         .energy-val { font-size: 1.8rem; }
+        
+        .hud-top { height: 70px; padding: 0 10px; }
+        .stat-val { font-size: 1.1rem; }
+        .settings-btn { font-size: 1.5rem; }
+        .heart-icons { font-size: 1rem; }
+        
+        /* On remonte le jeu car la barre du haut est plus petite */
+        #game-screen { padding-top: 85px; } 
+        
+        .q-display { font-size: 2.5rem; margin: 10px 0; }
+        .inp-display { height: 60px; line-height: 60px; font-size: 2.2rem; min-width: 200px; margin-bottom: 15px; }
+        
+        .numpad { gap: 8px; width: 92%; }
+        .key { padding: 12px 0; font-size: 1.3rem; border-radius: 10px; }
+        
+        .k-close { top: 80px; right: 15px; width: 40px; height: 40px; font-size: 1.5rem; }
+
+        .lvl-btn { width: 70px; height: 70px; font-size: 1.4rem; margin: 15px 0; }
+        .lvl-btn:nth-child(4n+2) { transform: translateX(60px); }
+        .lvl-btn:nth-child(4n+4) { transform: translateX(-60px); }
+    }
         
         /* Barre du haut (HUD) plus fine */
         .hud-top { height: 70px; padding: 0 10px; }
