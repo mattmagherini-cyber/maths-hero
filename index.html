@@ -219,74 +219,84 @@
     #settings-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; } #settings-screen.active { opacity: 1; pointer-events: all; }
     .settings-content { background: #2d3436; padding: 40px; border-radius: 25px; width: 85%; max-width: 400px; text-align: center; border: 1px solid rgba(255,255,255,0.1); } .setting-row { margin: 20px 0; display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; font-weight: bold; } .switch { position: relative; display: inline-block; width: 60px; height: 34px; } .switch input { opacity: 0; width: 0; height: 0; } .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; } .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; } input:checked + .slider { background-color: #00cec9; } input:checked + .slider:before { transform: translateX(26px); } .btn-toggle-creative { background: #6c5ce7; color: white; border: none; padding: 15px 20px; border-radius: 8px; font-weight: bold; width: 100%; margin-top: 10px; cursor: pointer; } .btn-danger { background: #d63031; color: white; border: none; padding: 12px; width: 100%; margin-top: 25px; cursor: pointer; border-radius: 8px; font-weight: bold; } .btn-close-settings { background: #b2bec3; color: #2d3436; border: none; padding: 12px; width: 100%; margin-top: 15px; cursor: pointer; border-radius: 8px; font-weight: bold; }
     .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; } @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-6px, 0, 0); } 40%, 60% { transform: translate3d(6px, 0, 0); } }
-/* --- OPTIMISATION MOBILE FINALE (SANS ZOOM) --- */
+/* --- OPTIMISATION MOBILE FINALE (CENTRAGE PARFAIT) --- */
     @media (max-width: 480px) {
-        /* Bloque le scroll élastique sur tout le site */
+        /* Bloque le scroll élastique et horizontal */
         html, body { 
             height: 100dvh; 
             overflow: hidden; 
             overscroll-behavior: none; 
+            width: 100vw;
         }
 
-        /* 1. MENU PRINCIPAL */
+        /* 1. MENU PRINCIPAL (RESET) */
+        /* On enlève le padding du conteneur principal pour éviter le décalage */
         #main-menu {
             height: 100dvh;
-            overflow-y: auto; /* Permet le scroll uniquement ici */
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 50px;
-        }
-        #grid-container {
-            zoom: 0.70; /* On dézoome fort le menu pour bien voir les cartes */
             width: 100%;
+            padding: 0; /* Suppression des marges internes */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Force le centrage des enfants */
         }
 
-        /* 2. JEU COMPACT */
+        /* Conteneur de la grille dézoomé */
+        #grid-container {
+            zoom: 0.70;
+            width: 100%;
+            padding-top: 130px; /* Espace pour le HUD */
+            padding-bottom: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Centre tout le contenu verticalement */
+        }
+
+        /* 2. BOUTON INFINI (Centré) */
+        .energy-gate { 
+            width: 80%; 
+            margin: 0 auto 50px auto !important; /* Force le centrage */
+            padding: 25px;
+        }
+
+        /* 3. CARTES (Snake Layout avec Transform) */
+        /* Cette méthode garantit que le "centre de gravité" reste au milieu */
+        .world-card-global {
+            width: 75%; 
+            margin: 0 auto 45px auto; /* Centre la carte de base */
+        }
+        
+        /* On décale juste visuellement avec transform, sans toucher aux marges */
+        .world-card-global:nth-of-type(odd) { 
+            transform: translateX(-15px) rotate(-1.5deg); /* Décale un peu à gauche */
+        }
+        .world-card-global:nth-of-type(even) { 
+            transform: translateX(15px) rotate(1.5deg); /* Décale un peu à droite */
+        }
+
+        /* 4. JEU & INTERFACE */
         #game-screen { 
-            padding-top: 95px; /* Juste sous la barre */
-            gap: 10px; /* Espace réduit entre les éléments */
+            padding-top: 95px; 
+            gap: 10px; 
         }
 
-        /* Instructions */
-        #g-instr { 
-            min-height: 15px; margin: 0; font-size: 0.8rem; 
-        }
-
-        /* Barres réduites */
-        .bars-container { 
-            width: 85%; margin-bottom: 0; transform: scale(0.9); 
-        }
-
-        /* Question plus petite */
-        .q-display { 
-            font-size: 2.2rem; margin: 5px 0; line-height: 1;
-        }
-        /* Réponse plus petite */
+        #g-instr { min-height: 15px; margin: 0; font-size: 0.8rem; }
+        .bars-container { width: 85%; margin-bottom: 0; transform: scale(0.9); }
+        .q-display { font-size: 2.2rem; margin: 5px 0; line-height: 1; }
+        
         .inp-display { 
             height: 50px; line-height: 50px; 
-            font-size: 2rem; 
-            min-width: 150px; 
-            margin-bottom: 5px; 
-            padding: 0 10px;
+            font-size: 2rem; min-width: 150px; margin-bottom: 5px; padding: 0 10px;
         }
 
-        /* CLAVIER COMPACT (Le secret pour que ça rentre) */
-        .numpad { 
-            gap: 5px; /* Touches très serrées */
-            width: 90%; /* Moins large */
-            margin-bottom: 20px;
-        }
-        .key { 
-            padding: 10px 0; /* Moins hautes */
-            font-size: 1.4rem; 
-            border-radius: 8px; 
-        }
+        .numpad { gap: 5px; width: 90%; margin-bottom: 20px; }
+        .key { padding: 10px 0; font-size: 1.4rem; border-radius: 8px; }
 
-        /* HUD (Barre du haut) */
-        .hud-top { height: 80px; padding: 0 5px; z-index: 200; }
+        .hud-top { height: 80px; padding: 0 5px; z-index: 200; width: 100%; }
         .stat-val { font-size: 0.9rem; }
         .heart-icons { font-size: 1rem; letter-spacing: 1px; }
 
-        /* Croix (En bas à droite) */
         .k-close { 
             top: auto; bottom: 20px; right: 20px; 
             width: 45px; height: 45px; font-size: 1.5rem;
@@ -295,7 +305,6 @@
             z-index: 300;
         }
         
-        /* Victoire */
         .vic-title { font-size: 11vw; }
         .vic-icon { font-size: 4rem; }
     }
